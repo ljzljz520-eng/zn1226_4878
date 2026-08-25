@@ -40,15 +40,14 @@ func (w *Checkout) Commit(session string) error {
 	}
 	return w.store.SaveAudit(domain.AuditRecord{ID: session + "-commit", CardID: x.CardID, Action: "commit", Accepted: true, CreatedAt: x.LastChecked})
 }
+// CancelAndCommit models the "update a record" business chain: the employee
+// cancels, then the gateway must refuse the final commit. Cancellation is the
+// terminal state — it must not be reverted, and no audit record may be
+// persisted afterwards. Commit enforces that by rejecting any session whose
+// Active flag is false, so we simply forward to it instead of reactivating.
 func (w *Checkout) CancelAndCommit(session string) error {
 	if e := w.Cancel(session); e != nil {
 		return e
 	}
-	x, e := w.store.Session(session)
-	if e != nil {
-		return e
-	}
-	x.Active = true
-	_ = w.store.SaveSession(x)
 	return w.Commit(session)
 }
